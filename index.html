@@ -94,6 +94,23 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);min-he
 .rbtn.sel-H{background:rgba(0,230,118,0.15);border-color:var(--green);color:var(--green)}
 .rbtn.sel-D{background:rgba(255,214,0,0.12);border-color:var(--yellow);color:var(--yellow)}
 .rbtn.sel-A{background:rgba(255,23,68,0.12);border-color:var(--red);color:var(--red)}
+.locked-banner{
+  background:#2a0f16;
+  border:1px solid #C2185B;
+  color:#F48FB1;
+  padding:8px;
+  border-radius:8px;
+  margin-bottom:10px;
+  text-align:center;
+  font-size:11px;
+  font-weight:700;
+}
+
+button:disabled,
+input:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
 .score-wrap{display:flex;align-items:center;gap:4px}
 .score-wrap input{width:34px;height:28px;text-align:center;background:var(--bg);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--txt);font-size:13px;font-weight:600;outline:none;font-family:'Inter',sans-serif}
 .score-wrap input:focus{border-color:var(--mag)}
@@ -175,7 +192,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <script>
 const SKEY='spingarn_polla2026v5';
 const SHEET_ID='1Ilu6MbqXPi9HhoIMw5yZzmznJ82cHtKxy8FiOlV8XF4';
-const API_URL='https://script.google.com/macros/s/AKfycbxP1OgD6xt_JnAHEwA8O3GA1mZi9i2IHl84tF3D5K8ueB0Cu1pyjTT6NzQPoS_LmxHtmA/exec';
+const API_URL='https://script.google.com/macros/s/AKfycbwEa1MhozFXMKNEJvd6wR-I9QZgjGH_Lb5mX-fsxpoBhOioXHRxdSG2mYVH5ErhkJ1OJA/exec';
 const ADMIN_PASS='Spingarn2026#';
 
 const COUNTRY_FLAGS = {
@@ -256,12 +273,40 @@ function buildMatches() {
 
 const ALL_MATCHES = buildMatches();
 
-function loadSt(){try{const r=localStorage.getItem(SKEY);if(r)return JSON.parse(r);}catch(e){}
-  return{users:[],predictions:{},results:{},koTeams:{},adminPass:ADMIN_PASS};}
+function loadSt(){
+
+  try{
+    const r=localStorage.getItem(SKEY);
+    if(r) return JSON.parse(r);
+  }catch(e){}
+
+  return{
+    users:[],
+    predictions:{},
+    results:{},
+    koTeams:{},
+    blockedMatches:[],
+    adminPass:ADMIN_PASS
+  };
+
+}
+
+function saveSt(s){
+
+  try{
+    localStorage.setItem(SKEY,JSON.stringify(s));
+  }catch(e){}
+}
+  
 function saveSt(s){try{localStorage.setItem(SKEY,JSON.stringify(s));}catch(e){}}
 
 let ST = loadSt();
-let CU = null; // current user
+
+if(!ST.blockedMatches){
+  ST.blockedMatches = [];
+}
+
+let CU = null;
 let TAB = 'predict';
 let ADMIN = sessionStorage.getItem('sp_admin')==='1';
 
@@ -486,9 +531,16 @@ function renderPredict(content){
         gh.innerHTML=`<span class="g-pill">GRUPO ${grp}</span>`;
         content.appendChild(gh);
       }
+      
       gm.forEach(m=>{
-        const pred=up[m.id]||{};
-        const hName=resolveTeam(m.home), aName=resolveTeam(m.away);
+
+  const pred=up[m.id]||{};
+
+  const blocked =
+    ST.blockedMatches.includes(m.id);
+
+  const hName=resolveTeam(m.home),
+        aName=resolveTeam(m.away);
         const hFlag=getFlag(hName), aFlag=getFlag(aName);
         const res=ST.results[m.id];
         const pts=calcMatchPts(CU,m.id);
@@ -496,22 +548,28 @@ function renderPredict(content){
         const ptsLbl=res?`+${pts}pts`:'';
         const card=document.createElement('div');
         card.className='match-card';
-        card.innerHTML=`<div class="match-row">
+        card.innerHTML=`
+
+${blocked ? `
+<div class="locked-banner">
+🔒 Se venció el plazo para participar en este partido
+</div>
+` : ''}
+
+<div class="match-row">
           <div class="team-side">
             <span style="font-size:26px;line-height:1">${hFlag}</span>
             <span class="tname">${hName}</span>
           </div>
           <div class="center-col">
             <div class="result-btns">
-              <button class="rbtn${pred.result==='H'?' sel-H':''}" onclick="setPredR('${m.id}','H',this)" title="Gana Local">L</button>
-              <button class="rbtn${pred.result==='D'?' sel-D':''}" onclick="setPredR('${m.id}','D',this)" title="Empate">E</button>
-              <button class="rbtn${pred.result==='A'?' sel-A':''}" onclick="setPredR('${m.id}','A',this)" title="Gana Visitante">V</button>
+              <button class="rbtn${pred.result==='H'?' sel-H':''}" ${blocked?'disabled':''} onclick="setPredR('${m.id}','H',this)" title="Gana Local">L</button>
+              <button class="rbtn${pred.result==='D'?' sel-D':''}" ${blocked?'disabled':''} onclick="setPredR('${m.id}','D',this)" title="Empate">E</button>
+              <button class="rbtn${pred.result==='A'?' sel-A':''}" ${blocked?'disabled':''} onclick="setPredR('${m.id}','A',this)" title="Gana Visitante">V</button>
             </div>
             <div class="score-wrap">
-              <input type="number" min="0" max="20" value="${pred.scoreH!==undefined?pred.scoreH:''}" placeholder="0" oninput="setPredScore('${m.id}','H',this.value)" />
-              <span class="score-sep">–</span>
-              <input type="number" min="0" max="20" value="${pred.scoreA!==undefined?pred.scoreA:''}" placeholder="0" oninput="setPredScore('${m.id}','A',this.value)" />
-            </div>
+              <input type="number" ${blocked?'disabled':''} min="0" max="20" value="${pred.scoreH!==undefined?pred.scoreH:''}" placeholder="0" oninput="setPredScore('${m.id}','H',this.value)" />
+              <input type="number" ${blocked?'disabled':''} min="0" max="20" value="${pred.scoreA!==undefined?pred.scoreA:''}" placeholder="0" oninput="setPredScore('${m.id}','A',this.value)" /></div>
             ${ptsLbl?`<span class="pts-pill ${ptsCls}">${ptsLbl}</span>`:'<span style="font-size:10px;color:var(--txt3)">${m.date}</span>'}
           </div>
           <div class="team-side right">
@@ -865,6 +923,13 @@ async function syncCloudData(){
 
   }
 
+const resBlocked = await fetch(
+  API_URL + '?action=loadBlockedMatches'
+);
+
+ST.blockedMatches =
+  await resBlocked.json();
+  
 }
 
 async function syncAllPredictions(){
