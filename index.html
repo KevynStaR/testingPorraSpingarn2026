@@ -297,8 +297,6 @@ function saveSt(s){
     localStorage.setItem(SKEY,JSON.stringify(s));
   }catch(e){}
 }
-  
-function saveSt(s){try{localStorage.setItem(SKEY,JSON.stringify(s));}catch(e){}}
 
 let ST = loadSt();
 
@@ -612,9 +610,9 @@ async function savePreds(){
     user:CU,
     predictions:Object.entries(preds).map(([matchId,p])=>({
       matchId,
-      result:p.result || '',
-      scoreH:p.scoreH || '',
-      scoreA:p.scoreA || ''
+      result:p.result ?? '',
+      scoreH:p.scoreH ?? '',
+      scoreA:p.scoreA ?? ''
     }))
   };
 
