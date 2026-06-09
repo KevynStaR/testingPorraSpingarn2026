@@ -581,7 +581,7 @@ ${blocked ? `
   });
   const saveBtn=document.createElement('div');
   saveBtn.style.cssText='position:sticky;bottom:1rem;display:flex;justify-content:center;padding:12px 0';
-  saveBtn.innerHTML=`<button class="btn-save" onclick="savePreds()">💾 Guardar mis predicciones</button>`;
+  saveBtn.innerHTML=`<button id="savePredsBtn" class="btn-save" onclick="savePreds()">💾 Guardar mis predicciones</button>`;
   content.appendChild(saveBtn);
 }
 
@@ -603,29 +603,93 @@ function setPredScore(mid, side, val){
 
 async function savePreds(){
 
-  const preds = ST.predictions[CU] || {};
+  if(window.savingPreds){
+    showToast('⏳ Ya se está guardando...');
+    return;
+  }
 
-  const payload = {
-    action:'savePredictions',
-    user:CU,
-    predictions:Object.entries(preds).map(([matchId,p])=>({
-      matchId,
-      result:p.result ?? '',
-      scoreH:p.scoreH ?? '',
-      scoreA:p.scoreA ?? ''
-    }))
-  };
+  window.savingPreds = true;
 
-await fetch(API_URL,{
-  method:'POST',
-  body:JSON.stringify(payload)
-});
+  const btn = document.getElementById('savePredsBtn');
 
-await syncCloudData();
+if(btn){
+  btn.disabled = true;
+  btn.textContent = '⏳ Guardando...';
+}
+  
+  try{
 
-saveSt(ST);
+    const preds = ST.predictions[CU] || {};
 
-showToast('✅ Predicciones guardadas');
+    for(const [matchId,p] of Object.entries(preds)){
+
+  const tieneLocal =
+    p.scoreH !== '' &&
+    p.scoreH !== undefined &&
+    p.scoreH !== null;
+
+  const tieneVisitante =
+    p.scoreA !== '' &&
+    p.scoreA !== undefined &&
+    p.scoreA !== null;
+
+  if(tieneLocal !== tieneVisitante){
+
+    showToast(
+      '⚠️ Más despacio velocista 😉. Debes completar ambos marcadores antes de guardar'
+    );
+
+    window.savingPreds = false;
+
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = '💾 Guardar mis predicciones';
+    }
+
+    return;
+  }
+
+}
+    
+    const payload = {
+      action:'savePredictions',
+      user:CU,
+      predictions:Object.entries(preds).map(([matchId,p])=>({
+        matchId,
+        result:p.result ?? '',
+        scoreH:p.scoreH ?? '',
+        scoreA:p.scoreA ?? ''
+      }))
+    };
+
+    await fetch(API_URL,{
+      method:'POST',
+      body:JSON.stringify(payload)
+    });
+
+    await syncCloudData();
+
+    saveSt(ST);
+
+    showToast('✅ Predicciones guardadas');
+
+  }catch(e){
+
+    console.error(e);
+
+    showToast('❌ Error al guardar predicciones');
+
+  }finally{
+
+    window.savingPreds = false;
+
+    if(btn){
+    btn.disabled = false;
+    btn.textContent = '💾 Guardar mis predicciones';
+  }
+    
+  }
+
 }
 
 function renderResults(content){
