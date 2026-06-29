@@ -192,7 +192,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <script>
 const SKEY='spingarn_polla2026v5';
 const SHEET_ID='1Ilu6MbqXPi9HhoIMw5yZzmznJ82cHtKxy8FiOlV8XF4';
-const API_URL='https://script.google.com/macros/s/AKfycbym9FaiaN2Tt12Btbnw9pqvl2O4EzYJm6iTJuPbqnsjaaVjMPF1Mw6IjqMR4Gf7XTLblg/exec';
+const API_URL='https://script.google.com/macros/s/AKfycbzmdyHQoGPJOYUAGTcsIDyhUwyfdskUYwOKIjVXDmFOc5OdMT1i9VnS8II_Crk3axVTqw/exec';
 const ADMIN_PASS='Spingarn2026#';
 
 const COUNTRY_FLAGS = {
@@ -241,7 +241,7 @@ function buildMatches() {
     {id:'r64_4',phase:'16vos de Final',group:'',home:'Países Bajos',away:'Marruecos',date:'29 Jun'},
     {id:'r64_5',phase:'16vos de Final',group:'',home:'Costa de Marfil',away:'Noruega',date:'30 Jun'},
     {id:'r64_6',phase:'16vos de Final',group:'',home:'Francia',away:'Suecia',date:'30 Jun'},
-    {id:'64_7',phase:'16vos de Final',group:'',home:'México',away:'Ecuador',date:'30 Jun'},
+    {id:'r64_7',phase:'16vos de Final',group:'',home:'México',away:'Ecuador',date:'30 Jun'},
     {id:'r64_8',phase:'16vos de Final',group:'',home:'Inglaterra',away:'RD Congo',date:'1 Jul'},
     {id:'r64_9',phase:'16vos de Final',group:'',home:'Bélgica',away:'Senegal',date:'1 Jul'},
     {id:'r64_10',phase:'16vos de Final',group:'',home:'Estados Unidos',away:'Bosnia y Herzegovina',date:'1 Jul'},
@@ -249,7 +249,7 @@ function buildMatches() {
     {id:'r64_12',phase:'16vos de Final',group:'',home:'Portugal',away:'Croacia',date:'2 Jul'},
     {id:'r64_13',phase:'16vos de Final',group:'',home:'Suiza',away:'Argelia',date:'2 Jul'},
     {id:'r64_14',phase:'16vos de Final',group:'',home:'Australia',away:'Egipto',date:'3 Jul'},
-    {id:'64_15',phase:'16vos de Final',group:'',home:'Argentina',away:'Cabo Verde',date:'3 Jul'},
+    {id:'r64_15',phase:'16vos de Final',group:'',home:'Argentina',away:'Cabo Verde',date:'3 Jul'},
     {id:'r64_16',phase:'16vos de Final',group:'',home:'Colombia',away:'Ghana',date:'3 Jul'},
 {id:'r32_1',phase:'Octavos de Final',group:'',home:'1A',away:'2B',date:'4 Jul'},
     {id:'r32_2',phase:'Octavos de Final',group:'',home:'1C',away:'2D',date:'4 Jul'},
@@ -324,8 +324,37 @@ function calcPts(uid){
     const res=ST.results[m.id]; const pred=up[m.id];
     if(pred&&(pred.result||pred.scoreH!==undefined)) preds++;
     if(!res||!pred) return;
-    const rr=calcResult(res.h,res.a);
-    if(pred.result&&pred.result===rr){pts+=2;correct++;}
+    const isKO =
+    m.id.startsWith('r64_') ||
+    m.id.startsWith('r32_') ||
+    m.id.startsWith('qf_') ||
+    m.id.startsWith('sf_') ||
+    m.id==='trd' ||
+    m.id==='fin';
+
+const rr = calcResult(res.h,res.a);
+
+if(isKO){
+
+    if(
+        pred.clasifica &&
+        pred.clasifica===res.clasifica
+    ){
+        pts+=2;
+        correct++;
+    }
+
+}else{
+
+    if(
+        pred.result &&
+        pred.result===rr
+    ){
+        pts+=2;
+        correct++;
+    }
+
+}
     if(pred.scoreH!==undefined&&pred.scoreA!==undefined&&parseInt(pred.scoreH)===parseInt(res.h)&&parseInt(pred.scoreA)===parseInt(res.a)){pts+=2;exact++;}
   });
   return{pts,correct,exact,preds};
@@ -335,8 +364,35 @@ function calcMatchPts(uid,mid){
   const res=ST.results[mid]; const pred=(ST.predictions[uid]||{})[mid];
   if(!res||!pred) return 0;
   let p=0;
-  const rr=calcResult(res.h,res.a);
-  if(pred.result&&pred.result===rr) p+=2;
+  const isKO =
+    mid.startsWith('r64_') ||
+    mid.startsWith('r32_') ||
+    mid.startsWith('qf_') ||
+    mid.startsWith('sf_') ||
+    mid==='trd' ||
+    mid==='fin';
+
+const rr=calcResult(res.h,res.a);
+
+if(isKO){
+
+    if(
+        pred.clasifica &&
+        pred.clasifica===res.clasifica
+    ){
+        p+=2;
+    }
+
+}else{
+
+    if(
+        pred.result &&
+        pred.result===rr
+    ){
+        p+=2;
+    }
+
+}
   if(pred.scoreH!==undefined&&pred.scoreA!==undefined&&parseInt(pred.scoreH)===parseInt(res.h)&&parseInt(pred.scoreA)===parseInt(res.a)) p+=2;
   return p;
 }
@@ -458,7 +514,8 @@ async function doLogin(){
       ST.predictions[name][row[1]] = {
         result: row[2],
         scoreH: row[3],
-        scoreA: row[4]
+        scoreA: row[4],
+        clasifica: row[5] || ''
       };
 
     });
@@ -658,7 +715,8 @@ if(btn){
         matchId,
         result:p.result ?? '',
         scoreH:p.scoreH ?? '',
-        scoreA:p.scoreA ?? ''
+        scoreA:p.scoreA ?? '',
+        clasifica:p.clasifica ?? ''
       }))
     };
 
@@ -1027,7 +1085,9 @@ async function syncAllPredictions(){
 
           scoreH:r[3],
 
-          scoreA:r[4]
+          scoreA:r[4],
+
+          clasifica: r[5] || ''
 
         };
 
