@@ -1191,7 +1191,8 @@ async function syncCloudData(){
 
         ST.results[r[0]] = {
           h:Number(r[1]),
-          a:Number(r[2])
+          a:Number(r[2]),
+          clasifica: r[3] || ''
         };
 
       });
