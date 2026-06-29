@@ -104,6 +104,27 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);min-he
   text-align:center;
   font-size:11px;
   font-weight:700;
+.classify-box{
+  margin-top:8px;
+  width:100%;
+}
+.classify-title{
+  text-align:center;
+  font-size:11px;
+  color:var(--txt3);
+  font-weight:700;
+  margin-bottom:6px;
+}
+.classify-buttons{
+  display:flex;
+  justify-content:center;
+  gap:8px;
+}
+.classify-buttons .rbtn{
+  width:40px;
+  height:34px;
+  font-size:22px;
+}
 }
 
 button:disabled,
@@ -594,6 +615,14 @@ function renderPredict(content){
   const blocked =
     ST.blockedMatches.includes(m.id);
 
+  const isKO =
+  m.id.startsWith('r64_') ||
+  m.id.startsWith('r32_') ||
+  m.id.startsWith('qf_') ||
+  m.id.startsWith('sf_') ||
+  m.id === 'trd' ||
+  m.id === 'fin';
+
   const hName=resolveTeam(m.home),
         aName=resolveTeam(m.away);
         const hFlag=getFlag(hName), aFlag=getFlag(aName);
@@ -622,10 +651,50 @@ ${blocked ? `
               <button class="rbtn${pred.result==='D'?' sel-D':''}" ${blocked?'disabled':''} onclick="setPredR('${m.id}','D',this)" title="Empate">E</button>
               <button class="rbtn${pred.result==='A'?' sel-A':''}" ${blocked?'disabled':''} onclick="setPredR('${m.id}','A',this)" title="Gana Visitante">V</button>
             </div>
-            <div class="score-wrap">
-              <input type="number" ${blocked?'disabled':''} min="0" max="20" value="${pred.scoreH!==undefined?pred.scoreH:''}" placeholder="0" oninput="setPredScore('${m.id}','H',this.value)" />
-              <input type="number" ${blocked?'disabled':''} min="0" max="20" value="${pred.scoreA!==undefined?pred.scoreA:''}" placeholder="0" oninput="setPredScore('${m.id}','A',this.value)" /></div>
-            ${ptsLbl?`<span class="pts-pill ${ptsCls}">${ptsLbl}</span>`:'<span style="font-size:10px;color:var(--txt3)">${m.date}</span>'}
+  <div class="score-wrap">
+  <input type="number" ${blocked?'disabled':''} min="0" max="20"
+    value="${pred.scoreH!==undefined?pred.scoreH:''}"
+    placeholder="0"
+    oninput="setPredScore('${m.id}','H',this.value)" />
+
+  <input type="number" ${blocked?'disabled':''} min="0" max="20"
+    value="${pred.scoreA!==undefined?pred.scoreA:''}"
+    placeholder="0"
+    oninput="setPredScore('${m.id}','A',this.value)" />
+</div>
+
+${isKO ? `
+<div class="classify-box">
+
+  <div class="classify-title">
+    🏆 ¿Quién clasifica?
+  </div>
+
+  <div class="classify-buttons">
+
+    <button
+      class="rbtn${pred.clasifica==='H'?' sel-H':''}"
+      ${blocked?'disabled':''}
+      onclick="setClasifica('${m.id}','H',this)">
+      ${hFlag}
+    </button>
+
+    <button
+      class="rbtn${pred.clasifica==='A'?' sel-A':''}"
+      ${blocked?'disabled':''}
+      onclick="setClasifica('${m.id}','A',this)">
+      ${aFlag}
+    </button>
+
+  </div>
+
+</div>
+` : ''}
+
+${ptsLbl
+  ? `<span class="pts-pill ${ptsCls}">${ptsLbl}</span>`
+  : `<span style="font-size:10px;color:var(--txt3)">${m.date}</span>`
+}
           </div>
           <div class="team-side right">
             <span style="font-size:26px;line-height:1">${aFlag}</span>
@@ -651,6 +720,32 @@ function setPredR(mid, val, btn){
   btn.className='rbtn sel-'+val;
 }
 
+function setClasifica(mid,val,btn){
+
+  if(!ST.predictions[CU])
+    ST.predictions[CU]={};
+
+  if(!ST.predictions[CU][mid])
+    ST.predictions[CU][mid]={};
+
+  ST.predictions[CU][mid].clasifica = val;
+
+  saveSt(ST);
+
+  btn
+    .closest('.classify-buttons')
+    .querySelectorAll('.rbtn')
+    .forEach(b=>{
+
+      b.classList.remove('sel-H');
+      b.classList.remove('sel-A');
+
+    });
+
+  btn.classList.add('sel-'+val);
+
+}
+  
 function setPredScore(mid, side, val){
   if(!ST.predictions[CU]) ST.predictions[CU]={};
   if(!ST.predictions[CU][mid]) ST.predictions[CU][mid]={};
@@ -881,15 +976,77 @@ function renderAdmin(content){
       const res=ST.results[m.id]||{};
       const hName=resolveTeam(m.home), aName=resolveTeam(m.away);
       const hFlag=getFlag(hName), aFlag=getFlag(aName);
-      const row=document.createElement('div'); row.className='admin-row';
-      row.innerHTML=`<span style="font-size:12px">${hFlag} ${hName}</span>
-        <div class="ri">
-          <input type="number" min="0" max="20" value="${res.h!==undefined?res.h:''}" placeholder="–" oninput="setRes('${m.id}','H',this.value)" />
-          <span style="color:var(--txt3);font-size:12px">–</span>
-          <input type="number" min="0" max="20" value="${res.a!==undefined?res.a:''}" placeholder="–" oninput="setRes('${m.id}','A',this.value)" />
-        </div>
-        <span style="font-size:12px;text-align:right">${aName} ${aFlag}</span>
-        <div class="status-dot${res.h!==undefined?' done':''}"></div>`;
+      const isKO =
+  m.id.startsWith('r64_') ||
+  m.id.startsWith('r32_') ||
+  m.id.startsWith('qf_') ||
+  m.id.startsWith('sf_') ||
+  m.id==='trd' ||
+  m.id==='fin';
+
+const row=document.createElement('div');
+row.className='admin-row';
+
+row.innerHTML=`
+
+<span style="font-size:12px">
+${hFlag} ${hName}
+</span>
+
+<div class="ri">
+
+<input
+type="number"
+min="0"
+max="20"
+value="${res.h!==undefined?res.h:''}"
+placeholder="–"
+oninput="setRes('${m.id}','H',this.value)" />
+
+<span style="color:var(--txt3)">-</span>
+
+<input
+type="number"
+min="0"
+max="20"
+value="${res.a!==undefined?res.a:''}"
+placeholder="–"
+oninput="setRes('${m.id}','A',this.value)" />
+
+</div>
+
+<span style="font-size:12px;text-align:right">
+${aName} ${aFlag}
+</span>
+
+<div class="status-dot${res.h!==undefined?' done':''}"></div>
+
+${isKO?`
+
+<div style="
+grid-column:1 / -1;
+display:flex;
+justify-content:center;
+gap:8px;
+margin-top:6px;
+">
+
+<button
+class="rbtn${res.clasifica==='H'?' sel-H':''}"
+onclick="setResClasifica('${m.id}','H',this)">
+${hFlag}
+</button>
+
+<button
+class="rbtn${res.clasifica==='A'?' sel-A':''}"
+onclick="setResClasifica('${m.id}','A',this)">
+${aFlag}
+</button>
+
+</div>
+
+`:''}
+`;
       card.appendChild(row);
     });
     content.appendChild(card);
@@ -923,6 +1080,28 @@ function renderAdmin(content){
 
 function setKoTeam(slot,val){ if(!ST.koTeams) ST.koTeams={}; ST.koTeams[slot]=val; saveSt(ST); }
 function setRes(mid,side,val){ if(!ST.results[mid]) ST.results[mid]={}; ST.results[mid][side==='H'?'h':'a']=val; saveSt(ST); }
+function setResClasifica(mid,val,btn){
+
+  if(!ST.results[mid])
+    ST.results[mid]={};
+
+  ST.results[mid].clasifica = val;
+
+  saveSt(ST);
+
+  btn
+    .parentElement
+    .querySelectorAll('.rbtn')
+    .forEach(b=>{
+
+      b.classList.remove('sel-H');
+      b.classList.remove('sel-A');
+
+    });
+
+  btn.classList.add('sel-'+val);
+
+}
 
 async function saveAll(){
 
@@ -936,7 +1115,9 @@ async function saveAll(){
 
         h:r.h,
 
-        a:r.a
+        a:r.a,
+
+        clasifica: r.clasifica ?? ''
 
       }));
 
